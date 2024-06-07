@@ -12,21 +12,35 @@ public class Main {
 		simulationThread.start();
 
 		System.out.println("Initializing deposit system...");
-		Thread depositThread = new Thread(bank::deposit);
+		Thread depositThread = new Thread(() -> {
+			try {
+				bank.deposit();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt(); // Restore interrupted status
+				System.err.println("Deposit thread interrupted");
+			}
+		});
 		depositThread.start();
 
 		System.out.println("Initializing withdraw system...");
-		Thread withdrawThread = new Thread(bank::withdraw);
+		Thread withdrawThread = new Thread(() -> {
+			try {
+				bank.withdraw();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt(); // Restore interrupted status
+				System.err.println("Withdraw thread interrupted");
+			}
+		});
 		withdrawThread.start();
 
 		try {
 			simulationThread.join();
-			// operationsQueue.add(-9999); 
-			// operationsQueue.add(-9999); 
+			operationsQueue.add(-9999);
 			depositThread.join();
 			withdrawThread.join();
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			Thread.currentThread().interrupt(); // Restore interrupted status
+			System.err.println("Main thread interrupted");
 		}
 
 		System.out.println("Completed");

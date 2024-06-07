@@ -1,47 +1,55 @@
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
 
 public class OperationsQueue {
 	private final List<Integer> operations = new ArrayList<>();
-	private final Object lock = new Object();
+	private final ReentrantLock lock = new ReentrantLock();
+	private final Condition condition = lock.newCondition();
 
 	public void addSimulation(int totalSimulations) {
-		synchronized (lock) {
+		lock.lock();
+		try {
 			for (int i = 0; i < totalSimulations; i++) {
 				int random = (int) (Math.random() * 200) - 100;
 				if (random != 0) {
 					operations.add(random);
-					lock.notifyAll(); // Notify waiting threads
+					System.out.println(i + ". New operation added: " + random);
 				}
-				System.out.println(i + ". New operation added: " + random);
 				try {
 					Thread.sleep((int) (Math.random() * 80));
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					Thread.currentThread().interrupt(); // Restore interrupted status
+					System.err.println("Simulation thread interrupted");
 				}
 			}
 			operations.add(-9999);
-			lock.notifyAll(); // Notify waiting threads
+			condition.signalAll(); // Notify all threads
+		} finally {
+			lock.unlock();
 		}
 	}
 
 	public void add(int amount) {
-		synchronized (lock) {
+		lock.lock();
+		try {
 			operations.add(amount);
-			lock.notifyAll(); // Notify waiting threads
+			condition.signalAll(); // Notify all threads
+		} finally {
+			lock.unlock();
 		}
 	}
 
-	public int getNextItem() {
-		synchronized (lock) {
+	public int getNextItem() throws InterruptedException {
+		lock.lock();
+		try {
 			while (operations.isEmpty()) {
-				try {
-					lock.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+				condition.await(); // Wait for a notification
 			}
 			return operations.remove(0);
+		} finally {
+			lock.unlock();
 		}
 	}
 }
